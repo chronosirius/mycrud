@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MySQL CRUD{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind's dark mode BEFORE it loads
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Dark mode scrollbar */
+        .dark ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #555;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        
+        /* Column resizer */
+        .column-resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: col-resize;
+            user-select: none;
+            background: rgba(156, 163, 175, 0.3);
+            border-right: 2px solid rgba(156, 163, 175, 0.5);
+        }
+        
+        .column-resizer:hover {
+            background: rgba(59, 130, 246, 0.4);
+            border-right: 2px solid rgba(59, 130, 246, 0.8);
+        }
+        
+        .dark .column-resizer {
+            background: rgba(107, 114, 128, 0.3);
+            border-right: 2px solid rgba(107, 114, 128, 0.5);
+        }
+        
+        .dark .column-resizer:hover {
+            background: rgba(59, 130, 246, 0.4);
+            border-right: 2px solid rgba(59, 130, 246, 0.8);
+        }
+        
+        th {
+            position: relative;
+        }
+        
+        /* Table cell ellipsis */
+        .table-cell {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .table-cell.text-wrap {
+            white-space: normal;
+            word-wrap: break-word;
+        }
+        
+        .table-cell.text-nowrap {
+            white-space: nowrap;
+        }
+        
+        /* Chip styles */
+        .chip {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+    </style>
+    <script>
+        // Dark mode initialization - runs IMMEDIATELY before page renders
+        (function() {
+            const darkMode = localStorage.getItem('darkMode');
+            if (darkMode === 'true') {
+                document.documentElement.classList.add('dark');
+            } else if (darkMode === 'false') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                // Default to system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', 'true');
+                }
+            }
+        })();
+        
+        // Dark mode toggle function
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            
+            if (isDark) {
+                html.classList.remove('dark');
+                localStorage.setItem('darkMode', 'false');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('darkMode', 'true');
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    {% block content %}{% endblock %}
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

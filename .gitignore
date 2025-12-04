@@ -1,0 +1,6 @@
+venv/**
+config.py
+customs/**
+templates/customs/**
+static/plugins/**
+**/__pycache__/**
