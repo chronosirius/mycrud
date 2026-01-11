@@ -381,16 +381,48 @@ function setupSearchFields() {
         label.textContent = `Search ${col.Field}`;
         div.appendChild(label);
         
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = `Filter ${col.Field}...`;
-        input.className = 'px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 text-sm';
-        input.addEventListener('input', debounce(() => {
-            searchFilters[col.Field] = input.value;
-            currentPage = 1;
-            loadTableData();
-        }, 500));
-        div.appendChild(input);
+        // Check if column is enum type
+        if (col.Type.startsWith('enum')) {
+            const select = document.createElement('select');
+            select.className = 'px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 text-sm';
+            
+            // Add "None" option for no filter
+            const noneOption = document.createElement('option');
+            noneOption.value = '';
+            noneOption.textContent = 'None (No filter)';
+            select.appendChild(noneOption);
+            
+            // Add enum values
+            for (const value of col.enum_values) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            }
+            
+            select.addEventListener('change', () => {
+                if (select.value === '') {
+                    delete searchFilters[col.Field];
+                } else {
+                    // Use special prefix to indicate exact match for enum
+                    searchFilters[col.Field] = '===EXACT===' + select.value;
+                }
+                currentPage = 1;
+                loadTableData();
+            });
+            div.appendChild(select);
+        } else {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Filter ${col.Field}...`;
+            input.className = 'px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 text-sm';
+            input.addEventListener('input', debounce(() => {
+                searchFilters[col.Field] = input.value;
+                currentPage = 1;
+                loadTableData();
+            }, 500));
+            div.appendChild(input);
+        }
         
         container.appendChild(div);
     }

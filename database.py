@@ -32,8 +32,14 @@ class DatabaseManager:
                 if search:
                     for col, value in search.items():
                         if value:
-                            where_parts.append(f"{col} LIKE %s")
-                            params.append(f"%{value}%")
+                            # Check if this is an exact match search (for enums)
+                            if value.startswith('===EXACT==='):
+                                actual_value = value.replace('===EXACT===', '')
+                                where_parts.append(f"{col} = %s")
+                                params.append(actual_value)
+                            else:
+                                where_parts.append(f"{col} LIKE %s")
+                                params.append(f"%{value}%")
                 
                 where_clause = "WHERE " + " AND ".join(where_parts) if where_parts else ""
                 
