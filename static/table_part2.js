@@ -8,13 +8,17 @@ async function loadTableData() {
     loading.classList.remove('hidden');
     tableBody.innerHTML = '';
     
-    const params = new URLSearchParams({
-        page: currentPage,
-        per_page: perPage,
-        search: JSON.stringify(searchFilters)
+    const response = await fetch(`/api/table/${tableName}/rows`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            page: currentPage,
+            per_page: perPage,
+            search: searchFilters
+        })
     });
-    
-    const response = await fetch(`/api/table/${tableName}/rows?${params}`);
     const data = await response.json();
     
     loading.classList.add('hidden');

@@ -381,6 +381,8 @@ function setupSearchFields() {
         label.textContent = `Search ${col.Field}`;
         div.appendChild(label);
         
+        const foreignKey = schema.foreign_keys?.[col.Field];
+        
         // Check if column is enum type
         if (col.Type.startsWith('enum')) {
             const select = document.createElement('select');
@@ -411,17 +413,178 @@ function setupSearchFields() {
                 loadTableData();
             });
             div.appendChild(select);
+        } else if (foreignKey) {
+            // For foreign key columns, provide both ID search and name search
+            
+            // Track which input is active to prevent interference
+            let activeSearchInput = null;
+            
+            // ID search input
+            const idInput = document.createElement('input');
+            idInput.type = 'number';
+            idInput.placeholder = `Filter by ID...`;
+            idInput.className = 'px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 text-sm';
+            
+            // Exact checkbox for ID
+            const idExactWrapper = document.createElement('div');
+            idExactWrapper.className = 'flex items-center gap-2 mt-1';
+            const idExactCheckbox = document.createElement('input');
+            idExactCheckbox.type = 'checkbox';
+            idExactCheckbox.id = `exact-${col.Field}-id`;
+            idExactCheckbox.className = 'rounded';
+            const idExactLabel = document.createElement('label');
+            idExactLabel.htmlFor = `exact-${col.Field}-id`;
+            idExactLabel.className = 'text-xs text-gray-600 dark:text-gray-400';
+            idExactLabel.textContent = 'Exact ID match';
+            idExactWrapper.appendChild(idExactCheckbox);
+            idExactWrapper.appendChild(idExactLabel);
+            
+            idInput.addEventListener('input', debounce(() => {
+                if (idInput.value) {
+                    activeSearchInput = 'id';
+                    // Clear FK search programmatically
+                    const oldFkValue = fkInput.value;
+                    fkInput.value = '';
+                    // Only update if FK was actually cleared
+                    const prefix = idExactCheckbox.checked ? '===EXACT===' : '';
+                    searchFilters[col.Field] = prefix + idInput.value;
+                    currentPage = 1;
+                    loadTableData();
+                } else if (activeSearchInput === 'id') {
+                    // Only delete if this input was the active one
+                    delete searchFilters[col.Field];
+                    activeSearchInput = null;
+                    currentPage = 1;
+                    loadTableData();
+                }
+            }, 500));
+            
+            idExactCheckbox.addEventListener('change', () => {
+                if (idInput.value) {
+                    const prefix = idExactCheckbox.checked ? '===EXACT===' : '';
+                    searchFilters[col.Field] = prefix + idInput.value;
+                    currentPage = 1;
+                    loadTableData();
+                }
+            });
+            
+            div.appendChild(idInput);
+            div.appendChild(idExactWrapper);
+            
+            // Foreign table search input
+            const fkLabel = document.createElement('label');
+            fkLabel.className = 'text-sm font-medium mt-2 mb-1';
+            fkLabel.textContent = `Or search by ${foreignKey.foreign_table}`;
+            div.appendChild(fkLabel);
+            
+            const fkInput = document.createElement('input');
+            fkInput.type = 'text';
+            fkInput.placeholder = `Filter by ${foreignKey.search_columns.join(', ')}...`;
+            fkInput.className = 'px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 text-sm';
+            
+            // Exact checkbox for FK search
+            const fkExactWrapper = document.createElement('div');
+            fkExactWrapper.className = 'flex items-center gap-2 mt-1';
+            const fkExactCheckbox = document.createElement('input');
+            fkExactCheckbox.type = 'checkbox';
+            fkExactCheckbox.id = `exact-${col.Field}-fk`;
+            fkExactCheckbox.className = 'rounded';
+            const fkExactLabel = document.createElement('label');
+            fkExactLabel.htmlFor = `exact-${col.Field}-fk`;
+            fkExactLabel.className = 'text-xs text-gray-600 dark:text-gray-400';
+            fkExactLabel.textContent = 'Exact match';
+            fkExactWrapper.appendChild(fkExactCheckbox);
+            fkExactWrapper.appendChild(fkExactLabel);
+            
+            fkInput.addEventListener('input', debounce(() => {
+                if (fkInput.value) {
+                    activeSearchInput = 'fk';
+                    // Clear ID search programmatically
+                    const oldIdValue = idInput.value;
+                    idInput.value = '';
+                    // Format: ===FK===tableName===searchValue or ===FK_EXACT===tableName===searchValue
+                    const prefix = fkExactCheckbox.checked ? '===FK_EXACT===' : '===FK===';
+                    searchFilters[col.Field] = `${prefix}${foreignKey.foreign_table}===${fkInput.value}`;
+                    currentPage = 1;
+                    loadTableData();
+                } else if (activeSearchInput === 'fk') {
+                    // Only delete if this input was the active one
+                    delete searchFilters[col.Field];
+                    activeSearchInput = null;
+                    currentPage = 1;
+                    loadTableData();
+                }
+            }, 500));
+            
+            fkExactCheckbox.addEventListener('change', () => {
+                if (fkInput.value) {
+                    const prefix = fkExactCheckbox.checked ? '===FK_EXACT===' : '===FK===';
+                    searchFilters[col.Field] = `${prefix}${foreignKey.foreign_table}===${fkInput.value}`;
+                    currentPage = 1;
+                    loadTableData();
+                }
+            });
+            
+            div.appendChild(fkInput);
+            div.appendChild(fkExactWrapper);
         } else {
+            // Regular text/number fields
+            const inputWrapper = document.createElement('div');
+            inputWrapper.className = 'flex flex-col';
+            
             const input = document.createElement('input');
             input.type = 'text';
             input.placeholder = `Filter ${col.Field}...`;
             input.className = 'px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 text-sm';
-            input.addEventListener('input', debounce(() => {
-                searchFilters[col.Field] = input.value;
-                currentPage = 1;
-                loadTableData();
-            }, 500));
-            div.appendChild(input);
+            
+            // Add exact checkbox for text types
+            const isTextType = col.Type.includes('char') || col.Type.includes('text');
+            
+            if (isTextType) {
+                const exactWrapper = document.createElement('div');
+                exactWrapper.className = 'flex items-center gap-2 mt-1';
+                const exactCheckbox = document.createElement('input');
+                exactCheckbox.type = 'checkbox';
+                exactCheckbox.id = `exact-${col.Field}`;
+                exactCheckbox.className = 'rounded';
+                const exactLabel = document.createElement('label');
+                exactLabel.htmlFor = `exact-${col.Field}`;
+                exactLabel.className = 'text-xs text-gray-600 dark:text-gray-400';
+                exactLabel.textContent = 'Exact match';
+                exactWrapper.appendChild(exactCheckbox);
+                exactWrapper.appendChild(exactLabel);
+                
+                input.addEventListener('input', debounce(() => {
+                    if (input.value) {
+                        const prefix = exactCheckbox.checked ? '===EXACT===' : '';
+                        searchFilters[col.Field] = prefix + input.value;
+                    } else {
+                        delete searchFilters[col.Field];
+                    }
+                    currentPage = 1;
+                    loadTableData();
+                }, 500));
+                
+                exactCheckbox.addEventListener('change', () => {
+                    if (input.value) {
+                        const prefix = exactCheckbox.checked ? '===EXACT===' : '';
+                        searchFilters[col.Field] = prefix + input.value;
+                        currentPage = 1;
+                        loadTableData();
+                    }
+                });
+                
+                inputWrapper.appendChild(input);
+                inputWrapper.appendChild(exactWrapper);
+                div.appendChild(inputWrapper);
+            } else {
+                input.addEventListener('input', debounce(() => {
+                    searchFilters[col.Field] = input.value;
+                    currentPage = 1;
+                    loadTableData();
+                }, 500));
+                div.appendChild(input);
+            }
         }
         
         container.appendChild(div);

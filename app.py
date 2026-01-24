@@ -110,18 +110,26 @@ def get_schema(table_name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/table/<table_name>/rows')
+@app.route('/api/table/<table_name>/rows', methods=['GET', 'POST'])
 @login_required
 def get_rows(table_name):
     try:
-        page = int(request.args.get('page', 1))
-        per_page = request.args.get('per_page', '50')
-        per_page = None if per_page == 'all' else int(per_page)
-        search = request.args.get('search', {})
-        
-        if isinstance(search, str) and search:
-            import json
-            search = json.loads(search)
+        if request.method == 'POST':
+            data = request.get_json()
+            page = int(data.get('page', 1))
+            per_page = data.get('per_page', '50')
+            per_page = None if per_page == 'all' else int(per_page)
+            search = data.get('search', {})
+        else:
+            # Keep GET for backwards compatibility
+            page = int(request.args.get('page', 1))
+            per_page = request.args.get('per_page', '50')
+            per_page = None if per_page == 'all' else int(per_page)
+            search = request.args.get('search', {})
+            
+            if isinstance(search, str) and search:
+                import json
+                search = json.loads(search)
         
         result = db_manager.get_rows(
             session['username'],

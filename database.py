@@ -32,8 +32,50 @@ class DatabaseManager:
                 if search:
                     for col, value in search.items():
                         if value:
-                            # Check if this is an exact match search (for enums)
-                            if value.startswith('===EXACT==='):
+                            # Handle foreign key searches with exact match (format: ===FK_EXACT===otherTable===value)
+                            if value.startswith('===FK_EXACT==='):
+                                parts = value.split('===', 4)
+                                if len(parts) >= 4:
+                                    fk_other_table = parts[2]
+                                    fk_search_value = parts[3]
+                                    
+                                    # Get FK config for this column
+                                    fk_config = config.FOREIGN_KEY_CONFIG.get(table_name, {}).get(col)
+                                    if fk_config and fk_config['foreign_table'] == fk_other_table:
+                                        # Build subquery to search in foreign table with exact match
+                                        search_cols = fk_config.get('search_columns', [])
+                                        if search_cols:
+                                            fk_where_parts = []
+                                            for search_col in search_cols:
+                                                fk_where_parts.append(f"{search_col} = %s")
+                                                params.append(fk_search_value)
+                                            
+                                            fk_where = ' OR '.join(fk_where_parts)
+                                            subquery = f"{col} IN (SELECT {fk_config['foreign_key']} FROM {fk_other_table} WHERE {fk_where})"
+                                            where_parts.append(subquery)
+                            # Handle foreign key searches (format: ===FK===otherTable===value)
+                            elif value.startswith('===FK==='):
+                                parts = value.split('===', 4)  # ['', 'FK', 'otherTable', 'searchValue']
+                                if len(parts) >= 4:
+                                    fk_other_table = parts[2]
+                                    fk_search_value = parts[3]
+                                    
+                                    # Get FK config for this column
+                                    fk_config = config.FOREIGN_KEY_CONFIG.get(table_name, {}).get(col)
+                                    if fk_config and fk_config['foreign_table'] == fk_other_table:
+                                        # Build subquery to search in foreign table
+                                        search_cols = fk_config.get('search_columns', [])
+                                        if search_cols:
+                                            fk_where_parts = []
+                                            for search_col in search_cols:
+                                                fk_where_parts.append(f"{search_col} LIKE %s")
+                                                params.append(f"%{fk_search_value}%")
+                                            
+                                            fk_where = ' OR '.join(fk_where_parts)
+                                            subquery = f"{col} IN (SELECT {fk_config['foreign_key']} FROM {fk_other_table} WHERE {fk_where})"
+                                            where_parts.append(subquery)
+                            # Check if this is an exact match search (for enums or text with exact flag)
+                            elif value.startswith('===EXACT==='):
                                 actual_value = value.replace('===EXACT===', '')
                                 where_parts.append(f"{col} = %s")
                                 params.append(actual_value)
@@ -54,6 +96,7 @@ class DatabaseManager:
                     limit_clause = ""
                 
                 sql = f"SELECT * FROM {query_table} {where_clause} {limit_clause}"
+                print(sql, params)
                 cursor.execute(sql, params)
                 rows = cursor.fetchall()
                 
